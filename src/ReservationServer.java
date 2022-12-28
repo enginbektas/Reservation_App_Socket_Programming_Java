@@ -6,40 +6,42 @@ import java.util.Map;
 
 
 public class ReservationServer {
+
     public static void main(String[] args) throws IOException {
         // Create a ServerSocket to listen for client connections
-        ServerSocket serverSocket = new ServerSocket(8082);
+        ServerSocket serverSocket = new ServerSocket(8080);
         ArrayList<Room> Rooms = new ArrayList<>();
 
         while (true) {
             // Accept a client connection
             Socket clientSocket = serverSocket.accept();
-
             // Create a BufferedReader to read from the client
             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             // Read the request line
             String requestLine = in.readLine();
             Map<String, String> parameters = new HashMap<>();
             Map<String, Map<String, String>> requests = new HashMap<>();
+            String[] tokens = requestLine.split("\\?");
+            String getAndMethod = tokens[0];
+            //tokenize method by ' /' char and set method to last token
+            String[] getAndMethodTokenized = getAndMethod.split(" /");
+            String method = getAndMethodTokenized[getAndMethodTokenized.length - 1];
+            String get = getAndMethodTokenized[0];
 
             //region Get all requests and store in requests
             // Split the query string into name-value pairs
-            String[] pairs = requestLine.split("&");
+            String[] pairs = tokens[1].split("&");
+
             for (String pair : pairs) {
-                //tokenize pair by '?' char
-                String[] tokens = pair.split("\\?");
-                String method = tokens[0];
-                //tokenize method by '/' char and set method to last token
-                String[] methodTokens = method.split("/");
-                method = methodTokens[methodTokens.length - 1];
-                String parametersString = tokens[1];
 
-                int equalsIndex = parametersString.indexOf("=");
-                String name = parametersString.substring(0, equalsIndex);
 
-                String value = parametersString.substring(equalsIndex + 1);
+                int equalsIndex = pair.indexOf("=");
+                String name = pair.substring(0, equalsIndex);
+                String value = pair.substring(equalsIndex + 1);
                 //remove last word from value
-                value = value.substring(0, value.indexOf(" "));
+                if(value.contains(" ")){
+                    value = value.substring(0, value.indexOf(" "));
+                }
 
                 parameters.put(name, value);
                 requests.put(method, parameters);
@@ -51,7 +53,7 @@ public class ReservationServer {
             if (parts[0].equals("GET")) {
                 //region Iterate for each request
                 for (Map.Entry<String, Map<String, String>> entry : requests.entrySet()) {
-                    String method = entry.getKey();
+
                     Map<String, String> parametersMap = entry.getValue();
                     PrintWriter out = new PrintWriter(clientSocket.getOutputStream());
                     //check if method is add
@@ -59,7 +61,7 @@ public class ReservationServer {
                         //region case:Reserve
                         case "reserve":
                             //check if inputs are valid
-                            if (parametersMap.containsKey("name")
+                            if (parametersMap.containsKey("room")
                                     && parametersMap.containsKey("activity")
                                     && parametersMap.containsKey("day")
                                     && parametersMap.containsKey("hour")
@@ -73,10 +75,16 @@ public class ReservationServer {
                                 int hour = Integer.parseInt(parametersMap.get("hour"));
                                 int duration = Integer.parseInt(parametersMap.get("duration"));
 
-
                                 //checks whether there exists an activity with name
                                 //activityname by contacting the Activity Server. If no such activity exists it sends back an HTTP
                                 //404 Not Found message.
+                                //check if activity exists by contacting ActivityServer
+                                ServerSocket ActivityServerSocket = new ServerSocket(Helper.ActivityServerPort);
+                                Socket ActivityClientSocket = ActivityServerSocket.accept();
+                                OutputStream activityClientSocketOutputStream = ActivityClientSocket.getOutputStream();
+                                activityClientSocketOutputStream.write("Hello, receiving server!".getBytes());
+                                activityClientSocketOutputStream.close();
+                                ActivityServerSocket.close();
 
 
 

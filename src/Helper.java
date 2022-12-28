@@ -3,6 +3,9 @@ import java.util.ArrayList;
 
 //Helper class to implement common methods for all classes
 public class Helper {
+    public final static int ActivityServerPort = 8082;
+    public final static int RoomServerPort = 8081;
+    public final static int ReservationServerPort = 8080;
     //A method which takes status code and message and handles the response
     public static void printHtmlMessage(String status, String message, PrintWriter out) {
         if (status == "200") {
