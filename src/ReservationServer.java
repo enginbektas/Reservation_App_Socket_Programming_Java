@@ -1,10 +1,15 @@
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 
 public class ReservationServer {
     public static void main(String[] args) throws IOException {
         // Create a ServerSocket to listen for client connections
         ServerSocket serverSocket = new ServerSocket(8082);
+        ArrayList<Room> Rooms = new ArrayList<>();
 
         while (true) {
             // Accept a client connection
@@ -12,36 +17,151 @@ public class ReservationServer {
 
             // Create a BufferedReader to read from the client
             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-
             // Read the request line
             String requestLine = in.readLine();
+            Map<String, String> parameters = new HashMap<>();
+            Map<String, Map<String, String>> requests = new HashMap<>();
 
-            // Split the request line into its parts
+            //region Get all requests and store in requests
+            // Split the query string into name-value pairs
+            String[] pairs = requestLine.split("&");
+            for (String pair : pairs) {
+                //tokenize pair by '?' char
+                String[] tokens = pair.split("\\?");
+                String method = tokens[0];
+                //tokenize method by '/' char and set method to last token
+                String[] methodTokens = method.split("/");
+                method = methodTokens[methodTokens.length - 1];
+                String parametersString = tokens[1];
+
+                int equalsIndex = parametersString.indexOf("=");
+                String name = parametersString.substring(0, equalsIndex);
+
+                String value = parametersString.substring(equalsIndex + 1);
+                //remove last word from value
+                value = value.substring(0, value.indexOf(" "));
+
+                parameters.put(name, value);
+                requests.put(method, parameters);
+            }
+            //endregion
+
             String[] parts = requestLine.split(" ");
-
             // Check if the request is a GET request
             if (parts[0].equals("GET")) {
-                // The request is a GET request
-                // You can now parse the rest of the request to get the requested resource and other request parameters
+                //region Iterate for each request
+                for (Map.Entry<String, Map<String, String>> entry : requests.entrySet()) {
+                    String method = entry.getKey();
+                    Map<String, String> parametersMap = entry.getValue();
+                    PrintWriter out = new PrintWriter(clientSocket.getOutputStream());
+                    //check if method is add
+                    switch (method) {
+                        //region case:Reserve
+                        case "reserve":
+                            //check if inputs are valid
+                            if (parametersMap.containsKey("name")
+                                    && parametersMap.containsKey("activity")
+                                    && parametersMap.containsKey("day")
+                                    && parametersMap.containsKey("hour")
+                                    && parametersMap.containsKey("duration")) {
 
-                // For example, you can get the requested resource by using parts[1]
-                String resource = parts[1];
+                                String name = parametersMap.get("name");
 
-                // You can then send a response back to the client
-                // For example, you can send a simple HTML page as the response
-                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-                out.println("HTTP/1.1 200 OK");
-                out.println("Content-Type: text/html");
-                out.println("");
-                out.println("<html>");
-                out.println("<body>");
-                out.println("<h1>Hello, World!</h1>");
-                out.println("</body>");
-                out.println("</html>");
+                                Room room = Helper.findRoomByName(name, Rooms);
+                                String ActivityName = parametersMap.get("activity");
+                                int day = Integer.parseInt(parametersMap.get("day"));
+                                int hour = Integer.parseInt(parametersMap.get("hour"));
+                                int duration = Integer.parseInt(parametersMap.get("duration"));
+
+
+                                //checks whether there exists an activity with name
+                                //activityname by contacting the Activity Server. If no such activity exists it sends back an HTTP
+                                //404 Not Found message.
+
+
+
+
+
+                                //if room doesn't exist, send HTTP 404 Not Found message indicating that the room doesn't exist
+                                if(!roomExists(name, Rooms)) {
+                                    Helper.printHtmlMessage("404", "The room doesn't exist", out);
+                                }
+                                //if room exists, check if it's available
+                                else if(Helper.isAvailable(room, day, hour, duration)) {
+                                    Helper.printHtmlMessage("403", "The room is already reserved", out);
+                                }
+                                //if room is available, reserve it
+                                else {
+                                    reserveRoom(name, day, hour, duration, Rooms);
+                                    Helper.printHtmlMessage("200", "The room reserved successfully", out);
+                                }
+                            }
+                            //if any of these inputs are not valid, it sends back an HTTP 400 Bad Request message.
+                            else {
+                                Helper.printHtmlMessage("400", "Inputs are invalid", out);
+                            }
+                            break;
+                        //endregion
+
+                    }
+                }
+                //endregion
             }
 
-            // Close the client socket
-            clientSocket.close();
         }
     }
+
+    private static boolean roomExists(String name, ArrayList<Room> rooms) {
+        for (Room room : rooms) {
+            if (room.Name.equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void addRoom(String name, ArrayList<Room> Rooms) {
+        Room room = new Room(name, 0);
+        Rooms.add(room);
+    }
+    public static void removeRoom(String name, ArrayList<Room> Rooms) {
+        for (Room room : Rooms) {
+            if (room.Name.equals(name)) {
+                Rooms.remove(room);
+            }
+        }
+    }
+
+
+    //reserve room with name and day and hour and duration
+    public static void reserveRoom(String name, int day, int hour, int duration, ArrayList<Room> Rooms) {
+        for (Room room : Rooms) {
+            if (room.Name.equals(name)) {
+                room.Day = day;
+            }
+        }
+    }
+    //checkAvailability method with roomname and day, returns back all available hours for specified day in the body of html message. If no such room exists it sends back an HTTP 404 Not Found message,
+    //or if x is not a valid input then it sends back an HTTP 400 Bad Request message.
+    public static ArrayList<Integer> checkAvailability(String name, int day, ArrayList<Room> Rooms, PrintWriter out) {
+        ArrayList<Integer> availableHours = new ArrayList<>();
+        for (Room room : Rooms) {
+            if (room.Name.equals(name)) {
+                if (room.Day == day) {
+                    //return all available hours for specified day in the body of html message
+
+                }
+
+            }
+            else {
+                //room doesn't exist
+
+            }
+        }
+        //return a tuple which consists of availablehours and roomExists
+        return availableHours;
+
+    }
+
 }
+//Helper.printHtmlMessage("404", "The room does not exist", out);
