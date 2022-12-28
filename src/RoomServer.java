@@ -98,10 +98,15 @@ public class RoomServer {
                             //endregion
                         //region case:ReserveRoom
                         case "reserveRoom":
-                            if (parametersMap.containsKey("name") || parametersMap.containsKey("day")) {
+                            if (parametersMap.containsKey("name")
+                                    && parametersMap.containsKey("day")
+                                    && parametersMap.containsKey("hour")
+                                    && parametersMap.containsKey("duration")) {
                                 String name = parametersMap.get("name");
                                 int day = Integer.parseInt(parametersMap.get("day"));
-                                reserveRoom(name, day, 0, 0, Rooms);
+                                int hour = Integer.parseInt(parametersMap.get("hour"));
+                                int duration = Integer.parseInt(parametersMap.get("duration"));
+                                reserveRoom(name, day, hour, duration, Rooms);
 
                             }
                             else {
