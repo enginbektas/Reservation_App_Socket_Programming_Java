@@ -64,13 +64,17 @@ public class ActivityServer {
                             if (parametersMap.containsKey("name")) {
                                 //if activity exists, send HTTP 403 Forbidden message indicating that the activity already exists
                                 if (activityExists(Activities, parametersMap.get("name"))) {
-                                    printHtmlMessage("403", "Activity already exists", out);
+                                    Helper.printHtmlMessage("403", "Activity already exists", out);
                                 } else {
                                     //add activity to Activities
                                     Activities.add(new Activity(parametersMap.get("name")));
                                     //send HTTP 200 OK message
-                                    printHtmlMessage("200", "Activity added successfully", out);
+                                    Helper.printHtmlMessage("200", "Activity added successfully", out);
                                 }
+                            }
+                            else {
+                                //send HTTP 400 Bad Request indicating that input is invalid
+                                Helper.printHtmlMessage("400", "Inputs are invalid", out);
                             }
                             break;
                         //endregion
@@ -85,11 +89,15 @@ public class ActivityServer {
                                 if (activityExists(Activities, parametersMap.get("name"))) {
                                     Activities.removeIf(activity -> activity.name.equals(parametersMap.get("name")));
                                     //send HTTP 200 OK message
-                                    printHtmlMessage("200", "Activity removed successfully", out);
+                                    Helper.printHtmlMessage("200", "Activity removed successfully", out);
                                 } else {
                                     //send HTTP 403 Forbidden message indicating that the activity doesn't exist
-                                    printHtmlMessage("403", "Activity doesn't exist", out);
+                                    Helper.printHtmlMessage("403", "Activity doesn't exist", out);
                                 }
+                            }
+                            else {
+                                //send HTTP 400 Bad Request indicating that input is invalid
+                                Helper.printHtmlMessage("400", "Input is invalid", out);
                             }
 
                             break;
@@ -102,11 +110,15 @@ public class ActivityServer {
                             if (parametersMap.containsKey("name")) {
                                 //if activity exists, send HTTP 200 OK message
                                 if (activityExists(Activities, parametersMap.get("name"))) {
-                                    printHtmlMessage("200", "Activity exists", out);
+                                    Helper.printHtmlMessage("200", "Activity exists", out);
                                 } else {
                                     //send HTTP 404 Not Found message
-                                    printHtmlMessage("404", "Activity doesn't exist", out);
+                                    Helper.printHtmlMessage("404", "Activity doesn't exist", out);
                                 }
+                            }
+                            else {
+                                //send HTTP 400 Not Found message
+                                Helper.printHtmlMessage("400", "Inputs are invalid", out);
                             }
                             break;
                         //endregion
@@ -114,29 +126,6 @@ public class ActivityServer {
                 }
                 //endregion
             }
-        }
-    }
-    public static void printHtmlMessage(String status, String message, PrintWriter out) {
-        if (status == "200") {
-            out.println("HTTP/1.1 200 OK");
-            out.println("Content-Type: text/html");
-            out.println();
-            out.println("<html><head><title>200 OK</title></head><body><h1>200 OK</h1><p>" + message + "</p></body></html>");
-            out.flush();
-        }
-        else if (status == "400") {
-            out.println("HTTP/1.1 400 Bad Request");
-            out.println("Content-Type: text/html");
-            out.println();
-            out.println("<html><head><title>400 Bad Request</title></head><body><h1>400 Bad Request</h1><p>" + message + "</p></body></html>");
-            out.flush();
-        }
-        if (status == "403") {
-            out.println("HTTP/1.1 403 Forbidden");
-            out.println("Content-Type: text/html");
-            out.println();
-            out.println("<html><head><title>403 Forbidden</title></head><body><h1>403 Forbidden</h1><p>" + message + "</p></body></html>");
-            out.flush();
         }
     }
     public static boolean activityExists(ArrayList<Activity> activities, String name) {
