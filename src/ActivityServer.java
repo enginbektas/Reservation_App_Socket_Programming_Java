@@ -7,8 +7,9 @@ import java.util.Map;
 public class ActivityServer {
     public static void main(String[] args) throws IOException {
         // Create a ServerSocket to listen for client connections
-        ServerSocket serverSocket = new ServerSocket(8082);
+        ServerSocket serverSocket = new ServerSocket(Helper.ActivityServerPort);
         ArrayList<Activity> Activities = new ArrayList<>();
+        System.out.println("Activity Server is running");
 
         while (true) {
             // Accept a client connection
@@ -113,8 +114,17 @@ public class ActivityServer {
                                     Helper.printHtmlMessage("200", "Activity exists", out);
                                 } else {
                                     //send HTTP 404 Not Found message
-                                    Helper.printHtmlMessage("404", "Activity doesn't exist", out);
+
+                                    out.println("HTTP/1.1 404 Not Found");
+                                    out.println("Content-Type: text/html");
+                                    out.println("Content-Length: 0");
+                                    out.println();
+                                    out.flush();
                                 }
+
+
+                                    //Helper.printHtmlMessage("404", "Activity doesn't exist", out);
+                                //}
                             }
                             else {
                                 //send HTTP 400 Not Found message

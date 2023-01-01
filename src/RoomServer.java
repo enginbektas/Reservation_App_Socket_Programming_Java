@@ -8,8 +8,9 @@ import java.util.Map;
 public class RoomServer {
     public static void main(String[] args) throws IOException {
         // Create a ServerSocket to listen for client connections
-        ServerSocket serverSocket = new ServerSocket(8081);
+        ServerSocket serverSocket = new ServerSocket(Helper.RoomServerPort);
         ArrayList<Room> Rooms = new ArrayList<>();
+        System.out.println("RoomServer is running...");
 
         while (true) {
             // Accept a client connection

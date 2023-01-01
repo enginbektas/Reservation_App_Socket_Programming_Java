@@ -9,8 +9,9 @@ public class ReservationServer {
 
     public static void main(String[] args) throws IOException {
         // Create a ServerSocket to listen for client connections
-        ServerSocket serverSocket = new ServerSocket(8080);
+        ServerSocket serverSocket = new ServerSocket(Helper.ReservationServerPort);
         ArrayList<Room> Rooms = new ArrayList<>();
+        System.out.println("Reservation Server is running");
 
         while (true) {
             // Accept a client connection
@@ -79,14 +80,21 @@ public class ReservationServer {
                                 //activityname by contacting the Activity Server. If no such activity exists it sends back an HTTP
                                 //404 Not Found message.
                                 //check if activity exists by contacting ActivityServer
-                                ServerSocket ActivityServerSocket = new ServerSocket(Helper.ActivityServerPort);
-                                Socket ActivityClientSocket = ActivityServerSocket.accept();
-                                OutputStream activityClientSocketOutputStream = ActivityClientSocket.getOutputStream();
-                                activityClientSocketOutputStream.write("Hello, receiving server!".getBytes());
-                                activityClientSocketOutputStream.close();
-                                ActivityServerSocket.close();
+
+                                //establish a connection with ActivityServer that has port 8081 then send message to it
+                                //Server:reservationServer, method:reserve
 
 
+
+                                //Send to activity server
+                                Socket activitySocket = new Socket("localhost", Helper.ActivityServerPort);
+
+                                //get from activity server
+                                BufferedReader activityIn = new BufferedReader(new InputStreamReader(activitySocket.getInputStream()));
+                                PrintWriter activityOut = new PrintWriter(activitySocket.getOutputStream(), true);
+                                activityOut.println("GET /check?name=" + "HelloActivity" + " HTTP/1.1");
+                                String response = activityIn.readLine();
+                                System.out.println(response);
 
 
 
@@ -115,7 +123,7 @@ public class ReservationServer {
                 }
                 //endregion
             }
-
+        clientSocket.close();
         }
     }
 
