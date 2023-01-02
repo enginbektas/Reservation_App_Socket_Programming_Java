@@ -200,8 +200,6 @@ public class ReservationServer {
                             }
                             break;
                         //endregion
-
-
                     }
                 }
                 //endregion

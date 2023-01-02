@@ -1,14 +1,15 @@
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Scanner;
 
 public class ActivityServer {
     public static void main(String[] args) throws IOException {
         // Create a ServerSocket to listen for client connections
         ServerSocket serverSocket = new ServerSocket(Helper.ActivityServerPort);
-        ArrayList<Activity> Activities = new ArrayList<>();
         System.out.println("Activity Server is running");
 
         while (true) {
@@ -31,7 +32,7 @@ public class ActivityServer {
             // Split the query string into name-value pairs
             tokens[1] = tokens[1].substring(0, tokens[1].indexOf(" "));
             //initialize a string array with name pairs with one element with tokens[1]
-            String[] pairs = { tokens[1] };
+            String[] pairs = {tokens[1]};
             if (tokens[1].contains("&")) {
                 pairs = tokens[1].split("&");
             }
@@ -62,16 +63,15 @@ public class ActivityServer {
                             //including an HTML file in the body that informs that the activity is added using printHtmlMessage method.
                             if (parametersMap.containsKey("name")) {
                                 //if activity exists, send HTTP 403 Forbidden message indicating that the activity already exists
-                                if (activityExists(Activities, parametersMap.get("name"))) {
+                                if (activityExists(parametersMap.get("name"))) {
                                     Helper.printHtmlMessage("403", "Activity already exists", out);
                                 } else {
                                     //add activity to Activities
-                                    Activities.add(new Activity(parametersMap.get("name")));
+                                    addActivity(parametersMap.get("name"));
                                     //send HTTP 200 OK message
                                     Helper.printHtmlMessage("200", "Activity added successfully", out);
                                 }
-                            }
-                            else {
+                            } else {
                                 //send HTTP 400 Bad Request indicating that input is invalid
                                 Helper.printHtmlMessage("400", "Inputs are invalid", out);
                             }
@@ -85,16 +85,15 @@ public class ActivityServer {
                             //sends back an HTTP 403 Forbidden message.
                             if (parametersMap.containsKey("name")) {
                                 //if activity exists, remove activity from Activities
-                                if (activityExists(Activities, parametersMap.get("name"))) {
-                                    Activities.removeIf(activity -> activity.name.equals(parametersMap.get("name")));
+                                if (activityExists(parametersMap.get("name"))) {
+                                    removeActivity(parametersMap.get("name"));
                                     //send HTTP 200 OK message
                                     Helper.printHtmlMessage("200", "Activity removed successfully", out);
                                 } else {
                                     //send HTTP 403 Forbidden message indicating that the activity doesn't exist
                                     Helper.printHtmlMessage("403", "Activity doesn't exist", out);
                                 }
-                            }
-                            else {
+                            } else {
                                 //send HTTP 400 Bad Request indicating that input is invalid
                                 Helper.printHtmlMessage("400", "Input is invalid", out);
                             }
@@ -108,19 +107,13 @@ public class ActivityServer {
                             //Found message.
                             if (parametersMap.containsKey("name")) {
                                 //if activity exists, send HTTP 200 OK message
-                                if (activityExists(Activities, parametersMap.get("name"))) {
+                                if (activityExists(parametersMap.get("name"))) {
                                     Helper.printHtmlMessage("200", "Activity exists", out);
                                 } else {
                                     //send HTTP 404 Not Found message
-                                    Helper.printHtmlMessage("404", "Activity exists", out);
-
+                                    Helper.printHtmlMessage("404", "Activity Not Found", out);
                                 }
-
-
-                                    //Helper.printHtmlMessage("404", "Activity doesn't exist", out);
-                                //}
-                            }
-                            else {
+                            } else {
                                 //send HTTP 400 Not Found message
                                 Helper.printHtmlMessage("400", "Inputs are invalid", out);
                             }
@@ -133,14 +126,57 @@ public class ActivityServer {
             clientSocket.close();
         }
     }
-    public static boolean activityExists(ArrayList<Activity> activities, String name) {
-        for (Activity activity : activities) {
-            if (activity.name.equals(name)) {
+
+    public static boolean activityExists(String name) {
+        for (String activity : getActivities()) {
+            if (activity.equals(name)) {
                 return true;
             }
         }
         return false;
     }
 
+    public static ArrayList<String> getActivities() {
+        ArrayList<String> activities = new ArrayList<>();
+        try {
+            File file = new File("src/db/activities.txt");
+            Scanner scanner = new Scanner(file);
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                activities.add(line);
+            }
+            scanner.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        return activities;
+    }
+
+
+    public static void removeActivity(String name) throws IOException {
+        //remove activity by name from activities.txt
+        File file = new File("src/db/Activities.txt");
+        File temp = new File("src/db/_temp_");
+        PrintWriter out = new PrintWriter(new FileWriter(temp));
+        Files.lines(file.toPath())
+                .filter(line -> !line.contains(name))
+                .forEach(out::println);
+        out.flush();
+        out.close();
+        //delete original file
+        file.delete();
+        //rename temp file to original file
+        temp.renameTo(file);
+    }
+
+    public static void addActivity(String name) {
+        //add activity name to src/db/activities.txt
+        try {
+            FileWriter fileWriter = new FileWriter("src/db/activities.txt", true);
+            fileWriter.write(name + "\n");
+            fileWriter.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
-//
