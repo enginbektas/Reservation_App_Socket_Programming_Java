@@ -15,51 +15,41 @@ public class RoomServer {
         while (true) {
             // Accept a client connection
             Socket clientSocket = serverSocket.accept();
-
             // Create a BufferedReader to read from the client
             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             // Read the request line
             String requestLine = in.readLine();
-            //Map for parameters (name, value)
             Map<String, String> parameters = new HashMap<>();
-            //Map for requests (method name, parameters)
             Map<String, Map<String, String>> requests = new HashMap<>();
+            String[] tokens = requestLine.split("\\?");
+            String getAndMethod = tokens[0];
+            //tokenize method by ' /' char and set method to last token
+            String[] getAndMethodTokenized = getAndMethod.split(" /");
+            String method = getAndMethodTokenized[getAndMethodTokenized.length - 1];
+            String get = getAndMethodTokenized[0];
 
             //region Get all requests and store in requests
             // Split the query string into name-value pairs
-            String[] pairs = requestLine.split("&");
-            for (String pair : pairs) {
-                //tokenize pair by '?' char
-                String[] tokens = pair.split("\\?");
-                String method = tokens[0];
-                //tokenize method by '/' char and set method to last token
-                String[] methodTokens = method.split("/");
-                method = methodTokens[methodTokens.length - 1];
-                //get parameters string
-                String parametersString = tokens[1];
+            tokens[1] = tokens[1].substring(0, tokens[1].indexOf(" "));
+            //initialize a string array with name pairs with one element with tokens[1]
+            String[] pairs = { tokens[1] };
+            if (tokens[1].contains("&")) {
+                pairs = tokens[1].split("&");
+            }
 
-                //tokenize parameters string by '=' char
-                int equalsIndex = parametersString.indexOf("=");
-                //determine name and value
-                String name = parametersString.substring(0, equalsIndex);
-                String value = parametersString.substring(equalsIndex + 1);
-                //remove last word from value (get rid of HTTP/1.1)
-                value = value.substring(0, value.indexOf(" "));
-                //update parameters map
+            for (String pair : pairs) {
+                int equalsIndex = pair.indexOf("=");
+                String name = pair.substring(0, equalsIndex);
+                String value = pair.substring(equalsIndex + 1);
                 parameters.put(name, value);
-                //update requests map
                 requests.put(method, parameters);
             }
-            //endregion
-
 
             String[] parts = requestLine.split(" ");
             // Check if the request is a GET request
             if (parts[0].equals("GET")) {
                 //region Iterate for each request
                 for (Map.Entry<String, Map<String, String>> entry : requests.entrySet()) {
-                    //get method name
-                    String method = entry.getKey();
                     //get parameters map
                     Map<String, String> parametersMap = entry.getValue();
                     PrintWriter out = new PrintWriter(clientSocket.getOutputStream());
@@ -129,8 +119,8 @@ public class RoomServer {
                                     Helper.printHtmlMessage("404", "The room doesn't exist", out);
                                 }
                                 //if room exists, check if it's available
-                                else if(Helper.isAvailable(room, day, hour, duration)) {
-                                    Helper.printHtmlMessage("403", "The room is already reserved", out);
+                                else if(!isAvailable(room, day, hour, duration)) {
+                                    Helper.printHtmlMessage("403", "The room is already reserved for specified hours", out);
                                 }
                                 //if room is available, reserve it
                                 else {
@@ -155,13 +145,13 @@ public class RoomServer {
                                     Room room = Helper.findRoomByName(name, Rooms);
 
                                     int day = Integer.parseInt(parametersMap.get("day"));
-                                    ArrayList<Integer> availableHours = Helper.checkAvailability(room, day);
-                                    //convert availableHours to string seperated by ", "
-                                    String availableHoursString = "Available hours for room " + name + ": ";
+                                    ArrayList<Integer> availableHours = checkAvailability(room, day);
+                                    //convert availableHours to string seperated by " "
+                                    String availableHoursString = "";
                                     for (int i = 0; i < availableHours.size(); i++) {
                                         availableHoursString += availableHours.get(i);
                                         if (i != availableHours.size() - 1) {
-                                            availableHoursString += ", ";
+                                            availableHoursString += " ";
                                         }
                                     }
                                     // Send the response
@@ -183,7 +173,7 @@ public class RoomServer {
                 }
                 //endregion
             }
-
+            clientSocket.close();
         }
     }
 
@@ -219,6 +209,27 @@ public class RoomServer {
     }
     //checkAvailability method with roomname and day, returns back all available hours for specified day in the body of html message. If no such room exists it sends back an HTTP 404 Not Found message,
     //or if x is not a valid input then it sends back an HTTP 400 Bad Request message.
+
+    //A method which takes room and day and returns all available hours for specified day
+    public static ArrayList<Integer> checkAvailability(Room room, int day) {
+        ArrayList<Integer> availableHours = new ArrayList<>();
+        //find availableHours for room
+
+        //return a tuple which consists of availablehours and roomExists
+        return availableHours;
+
+    }
+    //A method which takes room, day, hour and duration and returns true if room is not available for specified time and durations
+    public static boolean isAvailable(Room room, int day, int hour, int duration) {
+        ArrayList<Integer> availableHours = checkAvailability(room, day);
+        //return true if room has available hours for the specified day by checking if availableHours any hour between contains hour and hour + duration
+        for (int i = hour; i < hour + duration; i++) {
+            if (!availableHours.contains(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
 
 
 

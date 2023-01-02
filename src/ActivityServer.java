@@ -14,46 +14,44 @@ public class ActivityServer {
         while (true) {
             // Accept a client connection
             Socket clientSocket = serverSocket.accept();
-
             // Create a BufferedReader to read from the client
             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             // Read the request line
             String requestLine = in.readLine();
             Map<String, String> parameters = new HashMap<>();
             Map<String, Map<String, String>> requests = new HashMap<>();
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream());
+            String[] tokens = requestLine.split("\\?");
+            String getAndMethod = tokens[0];
+            //tokenize method by ' /' char and set method to last token
+            String[] getAndMethodTokenized = getAndMethod.split(" /");
+            String method = getAndMethodTokenized[getAndMethodTokenized.length - 1];
+            String get = getAndMethodTokenized[0];
+
             //region Get all requests and store in requests
             // Split the query string into name-value pairs
-            String[] pairs = requestLine.split("&");
+            tokens[1] = tokens[1].substring(0, tokens[1].indexOf(" "));
+            //initialize a string array with name pairs with one element with tokens[1]
+            String[] pairs = { tokens[1] };
+            if (tokens[1].contains("&")) {
+                pairs = tokens[1].split("&");
+            }
+
             for (String pair : pairs) {
-                //tokenize pair by '?' char
-                String[] tokens = pair.split("\\?");
-                String method = tokens[0];
-                //tokenize method by '/' char and set method to last token
-                String[] methodTokens = method.split("/");
-                method = methodTokens[methodTokens.length - 1];
-                String parametersString = tokens[1];
-
-                int equalsIndex = parametersString.indexOf("=");
-                String name = parametersString.substring(0, equalsIndex);
-
-                String value = parametersString.substring(equalsIndex + 1);
-                //remove last word from value
-                value = value.substring(0, value.indexOf(" "));
-
+                int equalsIndex = pair.indexOf("=");
+                String name = pair.substring(0, equalsIndex);
+                String value = pair.substring(equalsIndex + 1);
                 parameters.put(name, value);
                 requests.put(method, parameters);
             }
-            //endregion
 
             String[] parts = requestLine.split(" ");
             // Check if the request is a GET request
             if (parts[0].equals("GET")) {
                 //region Iterate for each request
                 for (Map.Entry<String, Map<String, String>> entry : requests.entrySet()) {
-                    String method = entry.getKey();
+                    //get parameters map
                     Map<String, String> parametersMap = entry.getValue();
-
+                    PrintWriter out = new PrintWriter(clientSocket.getOutputStream());
                     //check if method is add
                     switch (method) {
                         //region case:Add
@@ -114,12 +112,8 @@ public class ActivityServer {
                                     Helper.printHtmlMessage("200", "Activity exists", out);
                                 } else {
                                     //send HTTP 404 Not Found message
+                                    Helper.printHtmlMessage("404", "Activity exists", out);
 
-                                    out.println("HTTP/1.1 404 Not Found");
-                                    out.println("Content-Type: text/html");
-                                    out.println("Content-Length: 0");
-                                    out.println();
-                                    out.flush();
                                 }
 
 
@@ -136,6 +130,7 @@ public class ActivityServer {
                 }
                 //endregion
             }
+            clientSocket.close();
         }
     }
     public static boolean activityExists(ArrayList<Activity> activities, String name) {
