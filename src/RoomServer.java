@@ -118,7 +118,7 @@ public class RoomServer {
                                     Helper.printHtmlMessage("404", "The room doesn't exist", out);
                                 }
                                 //if room exists, check if it's available
-                                else if(!isAvailable(room, day, hour, duration)) {
+                                else if(!isAvailable(name, day, hour, duration)) {
                                     Helper.printHtmlMessage("403", "The room is already reserved for specified hours", out);
                                 }
                                 //if room is available, reserve it
@@ -236,12 +236,12 @@ public class RoomServer {
         return DaysAndAvailableHours.get(day);
     }
     //A method which takes room, day, hour and duration and returns true if room is not available for specified time and durations
-    public static boolean isAvailable(Room room, int day, int hour, int duration) {
-        ArrayList<Integer> availableHours = checkAvailability(room.Name, day);
+    public static boolean isAvailable(String roomName, int day, int hour, int duration) {
+        ArrayList<Integer> availableHours = checkAvailability(roomName, day);
         //return true if room has available hours for the specified day by checking if availableHours any hour between contains hour and hour + duration
         for (int i = hour; i < hour + duration; i++) {
             if (!availableHours.contains(i)) {
-                return true;
+                return false;
             }
         }
         return true;

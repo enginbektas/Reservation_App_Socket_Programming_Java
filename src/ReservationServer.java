@@ -87,7 +87,6 @@ public class ReservationServer {
 
                                 //region Initialize parameters
                                 String name = parametersMap.get("room");
-                                Room room = Helper.findRoomByName(name, Rooms);
                                 String activityName = parametersMap.get("activity");
                                 int day = Integer.parseInt(parametersMap.get("day"));
                                 int hour = Integer.parseInt(parametersMap.get("hour"));
