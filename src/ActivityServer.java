@@ -159,7 +159,7 @@ public class ActivityServer {
     public static ArrayList<String> getActivities() {
         ArrayList<String> activities = new ArrayList<>();
         try {
-            File file = new File("src/db/activities.txt");
+            File file = new File(Helper.ActivitiesPath);
             Scanner scanner = new Scanner(file);
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine();
@@ -175,8 +175,8 @@ public class ActivityServer {
     //Remove activity method
     public static void removeActivity(String name) throws IOException {
         //remove activity by name from activities.txt
-        File file = new File("src/db/Activities.txt");
-        File temp = new File("src/db/_temp_");
+        File file = new File(Helper.ActivitiesPath);
+        File temp = new File("./_temp_");
         PrintWriter out = new PrintWriter(new FileWriter(temp));
         Files.lines(file.toPath())
                 .filter(line -> !line.contains(name))
@@ -192,7 +192,7 @@ public class ActivityServer {
     public static void addActivity(String name) {
         //add activity name to src/db/activities.txt
         try {
-            FileWriter fileWriter = new FileWriter("src/db/activities.txt", true);
+            FileWriter fileWriter = new FileWriter(Helper.ActivitiesPath, true);
             fileWriter.write(name + "\n");
             fileWriter.close();
         } catch (IOException e) {

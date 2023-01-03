@@ -6,6 +6,13 @@ public class Helper {
     public final static int ActivityServerPort = 8082;
     public final static int RoomServerPort = 8081;
     public final static int ReservationServerPort = 8080;
+
+    public final static String ActivitiesPath = "./activities.txt";
+
+    public final static String ReservationsPath = "./reservations.txt";
+
+    public final static String RoomsPath = "./rooms.txt";
+
     //A method which takes status code and message and handles the response
     public static void printHtmlMessage(String status, String message, PrintWriter out) {
         if (status.equals("200")) {
@@ -50,13 +57,13 @@ public class Helper {
     public static boolean resetDatabase() {
         //remove all lines in the files activites.txt, reservations.txt and rooms.txt
         try {
-            PrintWriter out = new PrintWriter("src/db/activities.txt");
+            PrintWriter out = new PrintWriter(Helper.ActivitiesPath);
             out.print("");
             out.close();
-            out = new PrintWriter("src/db/reservations.txt");
+            out = new PrintWriter(Helper.ReservationsPath);
             out.print("");
             out.close();
-            out = new PrintWriter("src/db/rooms.txt");
+            out = new PrintWriter(Helper.RoomsPath);
             out.print("");
             out.close();
             return true;
@@ -68,7 +75,7 @@ public class Helper {
     public static boolean resetRooms() {
         //remove all lines in the file rooms.txt
         try {
-            PrintWriter out = new PrintWriter("src/db/rooms.txt");
+            PrintWriter out = new PrintWriter(Helper.RoomsPath);
             out.print("");
             out.close();
             return true;
@@ -80,7 +87,7 @@ public class Helper {
     public static boolean resetActivities() {
         //remove all lines in the file activities.txt
         try {
-            PrintWriter out = new PrintWriter("src/db/activities.txt");
+            PrintWriter out = new PrintWriter(Helper.ActivitiesPath);
             out.print("");
             out.close();
             return true;
@@ -92,7 +99,7 @@ public class Helper {
     public static boolean resetReservations() {
         //remove all lines in the file reservations.txt
         try {
-            PrintWriter out = new PrintWriter("src/db/reservations.txt");
+            PrintWriter out = new PrintWriter(Helper.ReservationsPath);
             out.print("");
             out.close();
             return true;

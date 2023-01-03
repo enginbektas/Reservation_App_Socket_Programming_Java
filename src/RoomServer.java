@@ -236,7 +236,7 @@ public class RoomServer {
         int lineCount = 0;
         //region Read src/db/Reservations.txt and count lines
         try {
-            BufferedReader reader = new BufferedReader(new FileReader("src/db/Reservations.txt"));
+            BufferedReader reader = new BufferedReader(new FileReader(Helper.ReservationsPath));
             while (reader.readLine() != null) lineCount++;
             reader.close();
         } catch (IOException e) {
@@ -247,7 +247,7 @@ public class RoomServer {
         String reservationString = id + " " + roomName + " " + day + " " + hour + " " + duration;
         //region Append to src/db/Reservations.txt
         try {
-            BufferedWriter writer = new BufferedWriter(new FileWriter("src/db/Reservations.txt", true));
+            BufferedWriter writer = new BufferedWriter(new FileWriter(Helper.ReservationsPath, true));
             writer.write(reservationString);
             writer.newLine();
             writer.close();
@@ -269,7 +269,7 @@ public class RoomServer {
         }
         //read src/db/Reservations.txt, read each line and tokenize by space
         try {
-            BufferedReader reader = new BufferedReader(new FileReader("src/db/Reservations.txt"));
+            BufferedReader reader = new BufferedReader(new FileReader(Helper.ReservationsPath));
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] tokens = line.split(" ");
@@ -313,7 +313,7 @@ public class RoomServer {
     public static ArrayList<String> getRooms() {
         ArrayList<String> rooms = new ArrayList<>();
         try {
-            File file = new File("src/db/Rooms.txt");
+            File file = new File(Helper.RoomsPath);
             Scanner scanner = new Scanner(file);
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine();
@@ -329,8 +329,8 @@ public class RoomServer {
 
     public static void removeRoom(String name) throws IOException {
         //remove room by name from rooms.txt
-        File file = new File("src/db/Rooms.txt");
-        File temp = new File("src/db/_temp_");
+        File file = new File(Helper.RoomsPath);
+        File temp = new File("./_temp_");
         PrintWriter out = new PrintWriter(new FileWriter(temp));
         Files.lines(file.toPath())
                 .filter(line -> !line.contains(name))
@@ -346,7 +346,7 @@ public class RoomServer {
     public static void addRoom(String name) {
         //add activity name to src/db/activities.txt
         try {
-            FileWriter fileWriter = new FileWriter("src/db/Rooms.txt", true);
+            FileWriter fileWriter = new FileWriter(Helper.RoomsPath, true);
             fileWriter.write(name + "\n");
             fileWriter.close();
         } catch (IOException e) {

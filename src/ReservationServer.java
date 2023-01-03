@@ -353,7 +353,7 @@ public class ReservationServer {
         String reservationString = "";
         boolean found = false;
         try {
-            File file = new File("src/db/Reservations.txt");
+            File file = new File(Helper.ReservationsPath);
             Scanner scanner = new Scanner(file);
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine();
@@ -386,7 +386,7 @@ public class ReservationServer {
         boolean found = false;
         Reservation reservation = new Reservation();
         try {
-            File file = new File("src/db/Reservations.txt");
+            File file = new File(Helper.ReservationsPath);
             Scanner scanner = new Scanner(file);
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine();
