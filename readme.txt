@@ -1,5 +1,3 @@
-Source files are in the src folder.
-
 This program can either be run by running 3 of the servers in the src folder in seperate cmd's with
 the command: java ServerName
 
@@ -13,6 +11,14 @@ How to use the program:
 
 You can invoke curl commands to the server to make requests. The server will respond with a status message.
 Or you can use a web browser to make requests to the server.
+
+How to reserve a room?
+-> First you need a room, if you do not any, you will need to create one by contacting the Room Server.
+-> Then you will need an activity that will be associated with the reservation. 
+Again if you do not have any, you will need to create one by contacting the Activity Server.
+-> Now you can make reservations by contacting the Reservation Server! But be careful. You will get errors
+when you enter invalid inputs.
+-> Remember to use reset methods if things go worse.
 
 You can invoke servers methods by using the following commands:
 
