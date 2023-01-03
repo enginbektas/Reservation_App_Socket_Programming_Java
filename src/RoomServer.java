@@ -1,8 +1,10 @@
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Scanner;
 
 
 public class RoomServer {
@@ -60,14 +62,14 @@ public class RoomServer {
                             //check if inputs are valid
                             if (parametersMap.containsKey("name") || parametersMap.containsKey("day")) {
                                 //if room exists, send HTTP 403 Forbidden message indicating that the room already exists
-                                if (roomExists(parametersMap.get("name"), Rooms)) {
+                                if (roomExists(parametersMap.get("name"))) {
                                     // Send the response
                                     Helper.printHtmlMessage("403", "The room already exists", out);
                                 } else {
                                     //get name and day from parametersMap
                                     String name = parametersMap.get("name");
                                     //create new room and add to Rooms
-                                    addRoom(name, Rooms);
+                                    addRoom(name);
                                     // Send the response
                                     Helper.printHtmlMessage("200", "The room added succesfully", out);
                                 }
@@ -83,9 +85,9 @@ public class RoomServer {
                             //check if inputs are valid
                             if (parametersMap.containsKey("name")) {
                                 //if room exists, remove it
-                                if (roomExists(parametersMap.get("name"), Rooms)) {
+                                if (roomExists(parametersMap.get("name"))) {
                                     String name = parametersMap.get("name");
-                                    removeRoom(name, Rooms);
+                                    removeRoom(name);
                                     Helper.printHtmlMessage("200", "The room removed successfully", out);
                                 }
                                 //if room doesn't exist, send HTTP 403 Forbidden message indicating that the room doesn't exist
@@ -115,7 +117,7 @@ public class RoomServer {
                                 int duration = Integer.parseInt(parametersMap.get("duration"));
 
                                 //if room doesn't exist, send HTTP 404 Not Found message indicating that the room doesn't exist
-                                if(!roomExists(name, Rooms)) {
+                                if(!roomExists(name)) {
                                     Helper.printHtmlMessage("404", "The room doesn't exist", out);
                                 }
                                 //if room exists, check if it's available
@@ -124,8 +126,9 @@ public class RoomServer {
                                 }
                                 //if room is available, reserve it
                                 else {
-                                    reserveRoom(name, day, hour, duration, Rooms);
-                                    Helper.printHtmlMessage("200", "The room reserved successfully", out);
+                                    int id = reserveRoom(name, day, hour, duration);
+                                    Helper.printHtmlMessage("200", "The room reserved successfully for" +
+                                            "day:" + day + ", hours:" + hour + ", duration:" + duration + ", id:" + id + " ", out);
                                 }
                             }
                             //if any of these inputs are not valid, it sends back an HTTP 400 Bad Request message.
@@ -139,7 +142,7 @@ public class RoomServer {
                             //check if inputs are valid
                             if (parametersMap.containsKey("name") || parametersMap.containsKey("day")) {
                                 //check if room exists
-                                if (roomExists(parametersMap.get("name"), Rooms)) {
+                                if (roomExists(parametersMap.get("name"))) {
                                     String name = parametersMap.get("name");
                                     //initialize room using findroombyname
                                     Room room = Helper.findRoomByName(name, Rooms);
@@ -177,35 +180,32 @@ public class RoomServer {
         }
     }
 
-    private static boolean roomExists(String name, ArrayList<Room> rooms) {
-        for (Room room : rooms) {
-            if (room.Name.equals(name)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static void addRoom(String name, ArrayList<Room> Rooms) {
-        Room room = new Room(name, 0);
-        Rooms.add(room);
-    }
-    public static void removeRoom(String name, ArrayList<Room> Rooms) {
-        for (Room room : Rooms) {
-            if (room.Name.equals(name)) {
-                Rooms.remove(room);
-            }
-        }
-    }
-
-
     //reserve room with name and day and hour and duration
-    public static void reserveRoom(String name, int day, int hour, int duration, ArrayList<Room> Rooms) {
-        for (Room room : Rooms) {
-            if (room.Name.equals(name)) {
-                room.Day = day;
-            }
+    public static int reserveRoom(String roomName, int day, int hour, int duration) {
+
+        int lineCount = 0;
+        //region Read src/db/Reservations.txt and count lines
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader("src/db/Reservations.txt"));
+            while (reader.readLine() != null) lineCount++;
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+        //endregion
+        int id = lineCount + 1;
+        String reservationString = id + " " + roomName + " " + day + " " + hour + " " + duration;
+        //region Append to src/db/Reservations.txt
+        try {
+            BufferedWriter writer = new BufferedWriter(new FileWriter("src/db/Reservations.txt", true));
+            writer.write(reservationString);
+            writer.newLine();
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //endregion
+        return id;
     }
     //checkAvailability method with roomname and day, returns back all available hours for specified day in the body of html message. If no such room exists it sends back an HTTP 404 Not Found message,
     //or if x is not a valid input then it sends back an HTTP 400 Bad Request message.
@@ -225,13 +225,61 @@ public class RoomServer {
         //return true if room has available hours for the specified day by checking if availableHours any hour between contains hour and hour + duration
         for (int i = hour; i < hour + duration; i++) {
             if (!availableHours.contains(i)) {
-                return false;
+                return true;
             }
         }
         return true;
     }
+    public static boolean roomExists(String name) {
+        for (String activity : getRooms()) {
+            if (activity.equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static ArrayList<String> getRooms() {
+        ArrayList<String> activities = new ArrayList<>();
+        try {
+            File file = new File("src/db/Rooms.txt");
+            Scanner scanner = new Scanner(file);
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                activities.add(line);
+            }
+            scanner.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        return activities;
+    }
 
 
+    public static void removeRoom(String name) throws IOException {
+        //remove activity by name from activities.txt
+        File file = new File("src/db/Rooms.txt");
+        File temp = new File("src/db/_temp_");
+        PrintWriter out = new PrintWriter(new FileWriter(temp));
+        Files.lines(file.toPath())
+                .filter(line -> !line.contains(name))
+                .forEach(out::println);
+        out.flush();
+        out.close();
+        //delete original file
+        file.delete();
+        //rename temp file to original file
+        temp.renameTo(file);
+    }
 
+    public static void addRoom(String name) {
+        //add activity name to src/db/activities.txt
+        try {
+            FileWriter fileWriter = new FileWriter("src/db/Rooms.txt", true);
+            fileWriter.write(name + "\n");
+            fileWriter.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
-//Helper.printHtmlMessage("404", "The room does not exist", out);

@@ -3,6 +3,7 @@ import java.net.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Scanner;
 
 
 public class ReservationServer {
@@ -104,8 +105,18 @@ public class ReservationServer {
                                 String roomResponse = roomIn.readLine();
                                 roomIn.readLine(); roomIn.readLine();
                                 String roomMessage = roomIn.readLine();
+                                //get status code
                                 String status = roomResponse.split(" ")[1];
                                 Helper.printHtmlMessage(status, roomMessage, out);
+                                //if 200, add activity to that reservation
+                                if(status.equals("200")){
+                                    //TODO add activity to reservation
+                                    //get substring of roomMessage from index of "id:" to next index of " "
+                                    String id = roomMessage.substring(roomMessage.indexOf("id:") + 3, roomMessage.indexOf(" ", roomMessage.indexOf("id:")));
+                                    //add activity to reservation
+                                    addActivityToReservationById(id, activityName);
+
+                                }
                                 break;
                                 //endregion
 
@@ -179,7 +190,6 @@ public class ReservationServer {
                             break;
                         //endregion
 
-
                         //region case:Display
                         case "display":
                             //check if inputs are valid
@@ -188,10 +198,15 @@ public class ReservationServer {
                                 //region Initialize parameters
                                 String id = parametersMap.get("id");
                                 //endregion
-
                                 //region Find reservation with id and display it
-                                Reservation reservation = new Reservation();
-
+                                Reservation reservation = getReservationById(id);
+                                if(reservation == null){
+                                    Helper.printHtmlMessage("404", "Reservation with id " + id + " doesn't exist", out);
+                                    break;
+                                }
+                                else {
+                                    Helper.printHtmlMessage("200", reservation.ReservationString, out);
+                                }
                                 //endregion
                             }
                             //if any of these inputs are not valid, it sends back an HTTP 400 Bad Request message.
@@ -208,36 +223,7 @@ public class ReservationServer {
         }
     }
 
-    private static boolean roomExists(String name, ArrayList<Room> rooms) {
-        for (Room room : rooms) {
-            if (room.Name.equals(name)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    public static void addRoom(String name, ArrayList<Room> Rooms) {
-        Room room = new Room(name, 0);
-        Rooms.add(room);
-    }
-    public static void removeRoom(String name, ArrayList<Room> Rooms) {
-        for (Room room : Rooms) {
-            if (room.Name.equals(name)) {
-                Rooms.remove(room);
-            }
-        }
-    }
-
-
-    //reserve room with name and day and hour and duration
-    public static void reserveRoom(String name, int day, int hour, int duration, ArrayList<Room> Rooms) {
-        for (Room room : Rooms) {
-            if (room.Name.equals(name)) {
-                room.Day = day;
-            }
-        }
-    }
     //checkAvailability method with roomname and day, returns back all available hours for specified day in the body of html message. If no such room exists it sends back an HTTP 404 Not Found message,
     //or if x is not a valid input then it sends back an HTTP 400 Bad Request message.
     public static ArrayList<Integer> checkAvailability(String name, int day, ArrayList<Room> Rooms, PrintWriter out) {
@@ -259,6 +245,69 @@ public class ReservationServer {
         return availableHours;
 
     }
+    //Method to append activity to the reservation by ReservationServer
+    public static void addActivityToReservationById(String id, String activityName) {
+        String reservationString = "";
+        boolean found = false;
+        try {
+            File file = new File("src/db/Reservations.txt");
+            Scanner scanner = new Scanner(file);
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                //tokenize line by space
+                String[] tokens = line.split(" ");
+                if (tokens[0].equals(id)) {
+                    //add activityName to the end of line
+                    line += " " + activityName;
+                    found = true;
+                }
+                reservationString += line + "\n";
+            }
+            scanner.close();
 
+            if (!found) {
+                System.out.println("Reservation not found with id: " + id);
+                return;
+            }
+
+            // write modified string to file
+            PrintWriter writer = new PrintWriter(file);
+            writer.print(reservationString);
+            writer.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+    public static Reservation getReservationById(String id) {
+        boolean found = false;
+        Reservation reservation = new Reservation();
+        try {
+            File file = new File("src/db/Reservations.txt");
+            Scanner scanner = new Scanner(file);
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                //tokenize line by space
+                String[] tokens = line.split(" ");
+                if (tokens[0].equals(id)) {
+                    found = true;
+                    reservation.Id = tokens[0];
+                    reservation.RoomName = tokens[1];
+                    reservation.Day = Integer.parseInt(tokens[2]);
+                    reservation.Hour = Integer.parseInt(tokens[3]);
+                    reservation.Duration = Integer.parseInt(tokens[4]);
+                    reservation.ActivityName = tokens[5];
+                    //redeclare reservation then return it
+                    reservation = new Reservation(reservation.Id, reservation.RoomName, reservation.ActivityName,
+                            reservation.Day, reservation.Hour, reservation.Duration);
+                }
+            }
+            scanner.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        if (!found)
+            return null;
+        return reservation;
+    }
 }
 //Helper.printHtmlMessage("404", "The room does not exist", out);

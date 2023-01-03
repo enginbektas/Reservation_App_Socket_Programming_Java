@@ -1,1 +1,0 @@
-reservation serverin parser kısmı düzgün çalışıyor.
