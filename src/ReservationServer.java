@@ -54,11 +54,7 @@ public class ReservationServer {
             BufferedReader activityIn = new BufferedReader(new InputStreamReader(activitySocket.getInputStream()));
             PrintWriter activityOut = new PrintWriter(activitySocket.getOutputStream(), true);
 
-            //Send to activity server
-            Socket roomSocket = new Socket("localhost", Helper.RoomServerPort);
-            //get from activity server
-            BufferedReader roomIn = new BufferedReader(new InputStreamReader(roomSocket.getInputStream()));
-            PrintWriter roomOut = new PrintWriter(roomSocket.getOutputStream(), true);
+
             //endregion
 
             String[] parts = requestLine.split(" ");
@@ -71,15 +67,23 @@ public class ReservationServer {
                     PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
                     //check if method is add
                     switch (method) {
-
                         //region case:Reserve
                         case "reserve":
+
                             //check if inputs are valid
                             if (parametersMap.containsKey("room")
                                     && parametersMap.containsKey("activity")
                                     && parametersMap.containsKey("day")
                                     && parametersMap.containsKey("hour")
                                     && parametersMap.containsKey("duration")) {
+
+                                //region Room Server Settings
+                                //Send to room server
+                                Socket roomSocket = new Socket("localhost", Helper.RoomServerPort);
+                                //get from room server
+                                BufferedReader roomIn = new BufferedReader(new InputStreamReader(roomSocket.getInputStream()));
+                                PrintWriter roomOut = new PrintWriter(roomSocket.getOutputStream(), true);
+                                //endregion
 
                                 //region Initialize parameters
                                 String name = parametersMap.get("room");
@@ -127,59 +131,89 @@ public class ReservationServer {
                             }
                             break;
                         //endregion
-
-                        //region case:ListAvailability /listavailability?room=roomname&day=x:
+                        //region case:ListAvailability
                         case "listavailability":
+                            //region With parameter day
                             //check if inputs are valid
                             if (parametersMap.containsKey("room")
                                     && parametersMap.containsKey("day")) {
 
+                                //region Room Server Settings
+                                //Send to room server
+                                Socket roomSocket = new Socket("localhost", Helper.RoomServerPort);
+                                //get from room server
+                                BufferedReader roomIn = new BufferedReader(new InputStreamReader(roomSocket.getInputStream()));
+                                PrintWriter roomOut = new PrintWriter(roomSocket.getOutputStream(), true);
+                                //endregion
                                 //region Initialize parameters
                                 String name = parametersMap.get("room");
-                                Room room = Helper.findRoomByName(name, Rooms);
                                 int day = Integer.parseInt(parametersMap.get("day"));
                                 //endregion
-
                                 //region Contact Room Server to checkavailibility with parameters room and day
-                                roomOut.println("GET /checkavailability?room=" + name + "&day=" + day + " HTTP/1.1");
+                                roomOut.println("GET /checkavailability?name=" + name + "&day=" + day + " HTTP/1.1");
+                                //Send to activity server
                                 String roomResponse = roomIn.readLine();
                                 roomIn.readLine(); roomIn.readLine();
                                 String roomMessage = roomIn.readLine();
-                                //get substring of roomMessage between <p> and </p>
+                                roomIn.read();
                                 String roomMessageSubstring = roomMessage.substring(roomMessage.indexOf("<p>") + 3, roomMessage.indexOf("</p>"));
-
                                 String status = roomResponse.split(" ")[1];
                                 Helper.printHtmlMessage(status, roomMessageSubstring, out);
                                 break;
                                 //endregion
 
                             }
+                            //endregion
+                            //region Without parameter day
                             else if (parametersMap.containsKey("room")) {
 
                                 //region Initialize parameters
                                 String name = parametersMap.get("room");
-                                Room room = Helper.findRoomByName(name, Rooms);
-                                String availableHoursForEachDay = "";
-                                //endregion
 
+                                //endregion
+                                ArrayList<String> availableHoursForEachDay = new ArrayList<>();
                                 //region Contact Room Server to checkavailibility with parameters room and day
-                                //do this for each day in week
-                                for (int i = 1; i <= 7; i++) {
-                                    roomOut.println("GET /checkavailability?room=" + name + "&day=" + i + " HTTP/1.1");
+                                for (int day = 1; day <= 7; day++) {
+
+                                    //region Room Server Settings
+                                    //Send to room server
+                                    Socket roomSocket = new Socket("localhost", Helper.RoomServerPort);
+                                    //get from room server
+                                    BufferedReader roomIn = new BufferedReader(new InputStreamReader(roomSocket.getInputStream()));
+                                    PrintWriter roomOut = new PrintWriter(roomSocket.getOutputStream(), true);
+                                    //endregion
+
+                                    roomOut.println("GET /checkavailability?name=" + name + "&day=" + day + " HTTP/1.1");
+
                                     String roomResponse = roomIn.readLine();
-                                    roomIn.readLine(); roomIn.readLine();
+                                    roomIn.readLine();
+                                    roomIn.readLine();
                                     String roomMessage = roomIn.readLine();
+
                                     //get substring of roomMessage between <p> and </p>
                                     String roomMessageSubstring = roomMessage.substring(roomMessage.indexOf("<p>") + 3, roomMessage.indexOf("</p>"));
+                                    //tokenize roomMessageSubstring by ":" and set roomMessageSubstring to the second token without the first character
+                                    roomMessageSubstring = roomMessageSubstring.split(":")[1].substring(1);
+                                    //generate string and add to list
+                                    String availableHoursString = "Available hours for room " + name + " on day " + day + ": " + roomMessageSubstring;
 
+                                    availableHoursForEachDay.add(availableHoursString);
                                     String status = roomResponse.split(" ")[1];
-                                    if(status.equals("200")){
-                                        //for each day store available hours in availableHoursForEachDay with days
-                                        availableHoursForEachDay += "Day " + i + ": " + roomMessageSubstring + "\n";
-                                    }
 
+                                    //region Print error message if status is not 200
+                                    if (!status.equals("200")) {
+                                        Helper.printHtmlMessage(status, roomMessageSubstring, out);
+                                        break;
+                                    }
+                                    //endregion
+                                    //endregion
                                 }
-                                Helper.printHtmlMessage("200", availableHoursForEachDay, out);
+                                //region Print all available hours for each day
+                                String Response = "";
+                                for (String s : availableHoursForEachDay) {
+                                    Response += s + "<br>";
+                                }
+                                Helper.printHtmlMessage("200", Response, out);
                                 break;
                                 //endregion
                             }
@@ -188,8 +222,8 @@ public class ReservationServer {
                                 Helper.printHtmlMessage("400", "Inputs are invalid", out);
                             }
                             break;
+                            //endregion
                         //endregion
-
                         //region case:Display
                         case "display":
                             //check if inputs are valid
