@@ -18,7 +18,7 @@ public class Reservation {
         Hour = hour;
         Duration = duration;
         ReservationString = "Id:" + id + "<br>" + "Room:" + roomName + "<br>" + "Activity:" + activityName + "<br>" +
-                "Day:" + Helper.convertDay(day) + "<br>" + "Time:" + hour + "-" + (hour + duration);
+                "Day:" + Helper.convertDay(day) + "<br>" + "Time:" + Helper.convertDuration(hour, duration) + "<br>";
 
     }
 }
