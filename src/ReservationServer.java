@@ -164,7 +164,7 @@ public class ReservationServer {
                                     Helper.printHtmlMessage(status, outMessage, out);
                                     break;
                                 }
-                                Helper.printHtmlMessage(status, roomMessage, out);
+                                Helper.printHtmlMessage(status, outMessage, out);
                                 break;
                                 //endregion
 
