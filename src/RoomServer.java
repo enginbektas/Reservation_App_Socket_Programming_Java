@@ -8,7 +8,6 @@ public class RoomServer {
     public static void main(String[] args) throws IOException {
         // Create a ServerSocket to listen for client connections
         ServerSocket serverSocket = new ServerSocket(Helper.RoomServerPort);
-        ArrayList<Room> Rooms = new ArrayList<>();
         System.out.println("RoomServer is running...");
 
         while (true) {
@@ -18,6 +17,9 @@ public class RoomServer {
             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             // Read the request line
             String requestLine = in.readLine();
+            if(requestLine.contains("favicon.ico")){
+                continue;
+            }
             Map<String, String> parameters = new HashMap<>();
             Map<String, Map<String, String>> requests = new HashMap<>();
             String[] tokens = requestLine.split("\\?");
@@ -29,20 +31,33 @@ public class RoomServer {
 
             //region Get all requests and store in requests
             // Split the query string into name-value pairs
-            tokens[1] = tokens[1].substring(0, tokens[1].indexOf(" "));
-            //initialize a string array with name pairs with one element with tokens[1]
-            String[] pairs = { tokens[1] };
-            if (tokens[1].contains("&")) {
-                pairs = tokens[1].split("&");
-            }
+            //if there are parameters
+            if (tokens.length > 1) {
+                tokens[1] = tokens[1].substring(0, tokens[1].indexOf(" "));
+                //initialize a string array with name pairs with one element with tokens[1]
+                String[] pairs = {tokens[1]};
+                if (tokens[1].contains("&")) {
+                    pairs = tokens[1].split("&");
+                }
 
-            for (String pair : pairs) {
-                int equalsIndex = pair.indexOf("=");
-                String name = pair.substring(0, equalsIndex);
-                String value = pair.substring(equalsIndex + 1);
-                parameters.put(name, value);
+                for (String pair : pairs) {
+                    int equalsIndex = pair.indexOf("=");
+                    String name = pair.substring(0, equalsIndex);
+                    String value = pair.substring(equalsIndex + 1);
+                    parameters.put(name, value);
+                    requests.put(method, parameters);
+                }
+            }
+            //Get the method if there are no parameters
+            else if (tokens.length == 1){
+                method = method.substring(0, method.indexOf(" "));
                 requests.put(method, parameters);
             }
+            else {
+                break;
+            }
+
+            //endregion
 
             String[] parts = requestLine.split(" ");
             // Check if the request is a GET request
@@ -57,7 +72,7 @@ public class RoomServer {
                         //region case:Add
                         case "add":
                             //check if inputs are valid
-                            if (parametersMap.containsKey("name") || parametersMap.containsKey("day")) {
+                            if (parametersMap.containsKey("name")) {
                                 //if room exists, send HTTP 403 Forbidden message indicating that the room already exists
                                 if (roomExists(parametersMap.get("name"))) {
                                     // Send the response
@@ -68,7 +83,7 @@ public class RoomServer {
                                     //create new room and add to Rooms
                                     addRoom(name);
                                     // Send the response
-                                    Helper.printHtmlMessage("200", "The room added succesfully", out);
+                                    Helper.printHtmlMessage("200", "Room " + name + " added succesfully", out);
                                 }
                             }
                             else {
@@ -106,9 +121,35 @@ public class RoomServer {
                                     && parametersMap.containsKey("hour")
                                     && parametersMap.containsKey("duration")) {
 
-                                String name = parametersMap.get("name");
-                                Room room = Helper.findRoomByName(name, Rooms);
+                                //region Invalid Input Error Messages
+                                //if day hour and duration is not numeric
+                                if (!Helper.isNumeric(parametersMap.get("day"))
+                                        || !Helper.isNumeric(parametersMap.get("hour"))
+                                        || !Helper.isNumeric(parametersMap.get("duration"))) {
+                                    Helper.printHtmlMessage("400", "Error: Day, hour and duration must be numbers", out);
+                                    break;
+                                }
+                                //if day is not between 1 and 7
+                                else if (Integer.parseInt(parametersMap.get("day")) < 1
+                                        || Integer.parseInt(parametersMap.get("day")) > 7) {
+                                    Helper.printHtmlMessage("400", "Error: Day must be between 1 and 7", out);
+                                    break;
+                                }
+                                //if hour is not between 9 and 17
+                                else if (Integer.parseInt(parametersMap.get("hour")) < 9
+                                        || Integer.parseInt(parametersMap.get("hour")) > 17) {
+                                    Helper.printHtmlMessage("400", "Error: Hour must be between 9 and 17", out);
+                                    break;
+                                }
+                                //if hour+duration is greater than 17
+                                else if (Integer.parseInt(parametersMap.get("hour")) + Integer.parseInt(parametersMap.get("duration")) > 17) {
+                                    Helper.printHtmlMessage("400", "Error: You can't reserve a room after 17", out);
+                                    break;
+                                }
+                                //endregion
 
+                                //get parameters
+                                String name = parametersMap.get("name");
                                 int day = Integer.parseInt(parametersMap.get("day"));
                                 int hour = Integer.parseInt(parametersMap.get("hour"));
                                 int duration = Integer.parseInt(parametersMap.get("duration"));
@@ -124,8 +165,8 @@ public class RoomServer {
                                 //if room is available, reserve it
                                 else {
                                     int id = reserveRoom(name, day, hour, duration);
-                                    Helper.printHtmlMessage("200", "The room reserved successfully for" +
-                                            "day:" + day + ", hours:" + hour + ", duration:" + duration + ", id:" + id + " ", out);
+                                    Helper.printHtmlMessage("200", "The room " + name + " reserved successfully on " +
+                                             Helper.convertDay(day) + " at " + Helper.convertDuration(hour, duration) + ", with Id:" + id + " ", out);
                                 }
                             }
                             //if any of these inputs are not valid, it sends back an HTTP 400 Bad Request message.
@@ -137,7 +178,18 @@ public class RoomServer {
                         //region case:CheckAvailability
                         case "checkavailability":
                             //check if inputs are valid
-                            if (parametersMap.containsKey("name") || parametersMap.containsKey("day")) {
+                            if (parametersMap.containsKey("name") && parametersMap.containsKey("day")) {
+                                //if day is not numeric, send HTTP 400 Bad Request message indicating that the day is not numeric
+                                if (!Helper.isNumeric(parametersMap.get("day"))) {
+                                    Helper.printHtmlMessage("400", "Error: Day must be a number", out);
+                                    break;
+                                }
+                                //if day is not between 1 and 7
+                                else if (Integer.parseInt(parametersMap.get("day")) < 1
+                                        || Integer.parseInt(parametersMap.get("day")) > 7) {
+                                    Helper.printHtmlMessage("400", "Error: Day must be between 1 and 7", out);
+                                    break;
+                                }
                                 //check if room exists
                                 if (roomExists(parametersMap.get("name"))) {
                                     String name = parametersMap.get("name");
@@ -152,7 +204,7 @@ public class RoomServer {
                                         }
                                     }
                                     // Send the response
-                                    Helper.printHtmlMessage("200", "Available hours for " + name + ": " + availableHoursString, out);
+                                    Helper.printHtmlMessage("200", "Available hours on " + Helper.convertDay(day) + " for " + name + ": " + availableHoursString, out);
                                 }
                                 //if room doesn't exist, send HTTP 404 Not Found message indicating that the room doesn't exist
                                 else {
@@ -164,7 +216,10 @@ public class RoomServer {
                             else {
                                 Helper.printHtmlMessage("400", "Inputs are invalid", out);
                             }
+                            break;
 
+                        default:
+                            Helper.printHtmlMessage("400", "You entered invalid method name", out);
                             break;
                             //endregion
                     }

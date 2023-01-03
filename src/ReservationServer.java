@@ -11,7 +11,6 @@ public class ReservationServer {
     public static void main(String[] args) throws IOException {
         // Create a ServerSocket to listen for client connections
         ServerSocket serverSocket = new ServerSocket(Helper.ReservationServerPort);
-        ArrayList<Room> Rooms = new ArrayList<>();
         System.out.println("Reservation Server is running");
 
         while (true) {
@@ -21,6 +20,9 @@ public class ReservationServer {
             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             // Read the request line
             String requestLine = in.readLine();
+            if(requestLine.contains("favicon.ico")){
+                continue;
+            }
             Map<String, String> parameters = new HashMap<>();
             Map<String, Map<String, String>> requests = new HashMap<>();
             String[] tokens = requestLine.split("\\?");
@@ -28,24 +30,34 @@ public class ReservationServer {
             //tokenize method by ' /' char and set method to last token
             String[] getAndMethodTokenized = getAndMethod.split(" /");
             String method = getAndMethodTokenized[getAndMethodTokenized.length - 1];
-            String get = getAndMethodTokenized[0];
-
             //region Get all requests and store in requests
             // Split the query string into name-value pairs
-            tokens[1] = tokens[1].substring(0, tokens[1].indexOf(" "));
-            //initialize a string array with name pairs with one element with tokens[1]
-            String[] pairs = { tokens[1] };
-            if (tokens[1].contains("&")) {
-                pairs = tokens[1].split("&");
-            }
+            //if there are parameters
+            if (tokens.length > 1) {
+                tokens[1] = tokens[1].substring(0, tokens[1].indexOf(" "));
+                //initialize a string array with name pairs with one element with tokens[1]
+                String[] pairs = {tokens[1]};
+                if (tokens[1].contains("&")) {
+                    pairs = tokens[1].split("&");
+                }
 
-            for (String pair : pairs) {
-                int equalsIndex = pair.indexOf("=");
-                String name = pair.substring(0, equalsIndex);
-                String value = pair.substring(equalsIndex + 1);
-                parameters.put(name, value);
+                for (String pair : pairs) {
+                    int equalsIndex = pair.indexOf("=");
+                    String name = pair.substring(0, equalsIndex);
+                    String value = pair.substring(equalsIndex + 1);
+                    parameters.put(name, value);
+                    requests.put(method, parameters);
+                }
+            }
+            //Get the method if there are no parameters
+            else if (tokens.length == 1){
+                method = method.substring(0, method.indexOf(" "));
                 requests.put(method, parameters);
             }
+            else {
+                break;
+            }
+
             //endregion
             //region Server Settings
             //Send to activity server
@@ -66,6 +78,7 @@ public class ReservationServer {
                     Map<String, String> parametersMap = entry.getValue();
                     PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
                     //check if method is add
+                    outerloop:
                     switch (method) {
                         //region case:Reserve
                         case "reserve":
@@ -77,6 +90,33 @@ public class ReservationServer {
                                     && parametersMap.containsKey("hour")
                                     && parametersMap.containsKey("duration")) {
 
+                                //region Invalid Input Error Messages
+                                //if day or hour or duration is not a number
+                                if (!Helper.isNumeric(parametersMap.get("day"))
+                                        || !Helper.isNumeric(parametersMap.get("hour"))
+                                        || !Helper.isNumeric(parametersMap.get("duration"))) {
+                                    Helper.printHtmlMessage("400", "Error: Day, Hour and Duration must be numbers", out);
+                                    break outerloop;
+                                }
+
+                                //if day is not between 1 and 7
+                                if (Integer.parseInt(parametersMap.get("day")) < 1
+                                        || Integer.parseInt(parametersMap.get("day")) > 7) {
+                                    Helper.printHtmlMessage("400", "Error: Day must be between 1 and 7", out);
+                                    break outerloop;
+                                }
+                                //if hour is not between 9 and 17
+                                if (Integer.parseInt(parametersMap.get("hour")) < 9
+                                        || Integer.parseInt(parametersMap.get("hour")) > 17) {
+                                    Helper.printHtmlMessage("400", "Error: Hour must be between 9 and 17", out);
+                                    break outerloop;
+                                }
+                                //if hour+duration is bigger than 17
+                                if (Integer.parseInt(parametersMap.get("hour")) + Integer.parseInt(parametersMap.get("duration")) > 17) {
+                                    Helper.printHtmlMessage("400", "Error: You can not reserve a room after 17:00", out);
+                                    break outerloop;
+                                }
+                                //endregion
                                 //region Room Server Settings
                                 //Send to room server
                                 Socket roomSocket = new Socket("localhost", Helper.RoomServerPort);
@@ -84,7 +124,6 @@ public class ReservationServer {
                                 BufferedReader roomIn = new BufferedReader(new InputStreamReader(roomSocket.getInputStream()));
                                 PrintWriter roomOut = new PrintWriter(roomSocket.getOutputStream(), true);
                                 //endregion
-
                                 //region Initialize parameters
                                 String name = parametersMap.get("room");
                                 String activityName = parametersMap.get("activity");
@@ -92,7 +131,6 @@ public class ReservationServer {
                                 int hour = Integer.parseInt(parametersMap.get("hour"));
                                 int duration = Integer.parseInt(parametersMap.get("duration"));
                                 //endregion
-
                                 //region Contact Activity Server to check if activity exists
                                 activityOut.println("GET /check?name=" + activityName + " HTTP/1.1");
                                 String activityResponse = activityIn.readLine();
@@ -110,16 +148,23 @@ public class ReservationServer {
                                 String roomMessage = roomIn.readLine();
                                 //get status code
                                 String status = roomResponse.split(" ")[1];
-                                Helper.printHtmlMessage(status, roomMessage, out);
+                                String outMessage = "";
+                                //get substring of roomMessage between <p> and </p> to get the message
+                                if(roomMessage.contains("<p>") && roomMessage.contains("</p>")){
+                                    outMessage = roomMessage.substring(roomMessage.indexOf("<p>")+3, roomMessage.indexOf("</p>"));
+                                }
                                 //if 200, add activity to that reservation
                                 if(status.equals("200")){
-                                    //TODO add activity to reservation
+                                    //Append activity to the reservation string
+                                    outMessage = outMessage + " for " + activityName;
                                     //get substring of roomMessage from index of "id:" to next index of " "
-                                    String id = roomMessage.substring(roomMessage.indexOf("id:") + 3, roomMessage.indexOf(" ", roomMessage.indexOf("id:")));
+                                    String id = roomMessage.substring(roomMessage.indexOf("Id:") + 3, roomMessage.indexOf(" ", roomMessage.indexOf("Id:")));
                                     //add activity to reservation
                                     addActivityToReservationById(id, activityName);
-
+                                    Helper.printHtmlMessage(status, outMessage, out);
+                                    break;
                                 }
+                                Helper.printHtmlMessage(status, roomMessage, out);
                                 break;
                                 //endregion
 
@@ -136,7 +181,18 @@ public class ReservationServer {
                             //check if inputs are valid
                             if (parametersMap.containsKey("room")
                                     && parametersMap.containsKey("day")) {
-
+                                //region Invalid Input Error Messages
+                                //if day is not a number
+                                if (!Helper.isNumeric(parametersMap.get("day"))) {
+                                    Helper.printHtmlMessage("400", "Error: Day must be a number", out);
+                                    break outerloop;
+                                }
+                                //if day is not between 1 and 7
+                                if (Integer.parseInt(parametersMap.get("day")) < 1 || Integer.parseInt(parametersMap.get("day")) > 7) {
+                                    Helper.printHtmlMessage("400", "Error: Day must be between 1 and 7", out);
+                                    break outerloop;
+                                }
+                                //endregion
                                 //region Room Server Settings
                                 //Send to room server
                                 Socket roomSocket = new Socket("localhost", Helper.RoomServerPort);
@@ -170,8 +226,8 @@ public class ReservationServer {
                                 String name = parametersMap.get("room");
 
                                 //endregion
-                                ArrayList<String> availableHoursForEachDay = new ArrayList<>();
                                 //region Contact Room Server to checkavailibility with parameters room and day
+                                String availableHoursString = "Availability of room: " + name + "<br>";
                                 for (int day = 1; day <= 7; day++) {
 
                                     //region Room Server Settings
@@ -191,28 +247,21 @@ public class ReservationServer {
 
                                     //get substring of roomMessage between <p> and </p>
                                     String roomMessageSubstring = roomMessage.substring(roomMessage.indexOf("<p>") + 3, roomMessage.indexOf("</p>"));
-                                    //tokenize roomMessageSubstring by ":" and set roomMessageSubstring to the second token without the first character
-                                    roomMessageSubstring = roomMessageSubstring.split(":")[1].substring(1);
-                                    //generate string and add to list
-                                    String availableHoursString = "Available hours for room " + name + " on day " + day + ": " + roomMessageSubstring;
-
-                                    availableHoursForEachDay.add(availableHoursString);
                                     String status = roomResponse.split(" ")[1];
-
                                     //region Print error message if status is not 200
                                     if (!status.equals("200")) {
                                         Helper.printHtmlMessage(status, roomMessageSubstring, out);
-                                        break;
+                                        break outerloop;
                                     }
                                     //endregion
+                                    //tokenize roomMessageSubstring by ":" and set roomMessageSubstring to the second token without the first character
+                                    roomMessageSubstring = roomMessageSubstring.split(":")[1].substring(1);
+                                    //generate string and add to list
+                                    availableHoursString += Helper.convertDay(day) + ": " + roomMessageSubstring + "<br>";
+
                                     //endregion
                                 }
-                                //region Print all available hours for each day
-                                String Response = "";
-                                for (String s : availableHoursForEachDay) {
-                                    Response += s + "<br>";
-                                }
-                                Helper.printHtmlMessage("200", Response, out);
+                                Helper.printHtmlMessage("200", availableHoursString, out);
                                 break;
                                 //endregion
                             }
@@ -227,6 +276,13 @@ public class ReservationServer {
                         case "display":
                             //check if inputs are valid
                             if (parametersMap.containsKey("id")) {
+                                //region Invalid Input Error Messages
+                                //if id is not a number
+                                if (!Helper.isNumeric(parametersMap.get("id"))) {
+                                    Helper.printHtmlMessage("400", "Error: ID must be a number", out);
+                                    break outerloop;
+                                }
+                                //endregion
 
                                 //region Initialize parameters
                                 String id = parametersMap.get("id");
@@ -248,6 +304,40 @@ public class ReservationServer {
                             }
                             break;
                         //endregion
+                        //region case:ResetAll
+                        case "resetall":
+                            boolean status = Helper.resetDatabase();
+                            if (status)
+                                Helper.printHtmlMessage("200", "Reset database successful", out);
+                            break;
+                            //endregion
+                        //region case:ResetRooms
+                        case "resetrooms":
+                            boolean status2 = Helper.resetRooms();
+                            if (status2)
+                                Helper.printHtmlMessage("200", "Reset rooms successful", out);
+                            break;
+                        //endregion
+                        //region case:ResetActivities
+                        case "resetactivities":
+                            boolean status3 = Helper.resetActivities();
+                            if (status3)
+                                Helper.printHtmlMessage("200", "Reset activities successful", out);
+                            break;
+                        //endregion
+                        //region case:ResetReservations
+                        case "resetreservations":
+                            boolean status4 = Helper.resetReservations();
+                            if (status4)
+                                Helper.printHtmlMessage("200", "Reset reservations successful", out);
+                            break;
+                        //endregion
+                        //region case:Default
+                        default:
+                            Helper.printHtmlMessage("400", "You entered invalid method name", out);
+                            break;
+                        //endregion
+
                     }
                 }
                 //endregion
@@ -257,28 +347,8 @@ public class ReservationServer {
     }
 
 
-    //checkAvailability method with roomname and day, returns back all available hours for specified day in the body of html message. If no such room exists it sends back an HTTP 404 Not Found message,
-    //or if x is not a valid input then it sends back an HTTP 400 Bad Request message.
-    public static ArrayList<Integer> checkAvailability(String name, int day, ArrayList<Room> Rooms, PrintWriter out) {
-        ArrayList<Integer> availableHours = new ArrayList<>();
-        for (Room room : Rooms) {
-            if (room.Name.equals(name)) {
-                if (room.Day == day) {
-                    //return all available hours for specified day in the body of html message
-
-                }
-
-            }
-            else {
-                //room doesn't exist
-
-            }
-        }
-        //return a tuple which consists of availablehours and roomExists
-        return availableHours;
-
-    }
     //Method to append activity to the reservation by ReservationServer
+    //We use this method because RoomServer does not implicitly adds activity to the reservation
     public static void addActivityToReservationById(String id, String activityName) {
         String reservationString = "";
         boolean found = false;
@@ -311,6 +381,7 @@ public class ReservationServer {
             e.printStackTrace();
         }
     }
+    //For display reservation
     public static Reservation getReservationById(String id) {
         boolean found = false;
         Reservation reservation = new Reservation();

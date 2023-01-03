@@ -38,15 +38,92 @@ public class Helper {
         }
     }
 
-
-
-    //A method which takes room name then returns the room object
-    public static Room findRoomByName(String name, ArrayList<Room> Rooms) {
-        for (Room room : Rooms) {
-            if (room.Name.equals(name)) {
-                return room;
-            }
+    public static boolean isNumeric(String string) {
+        try {
+            Integer.parseInt(string);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
         }
-        return null;
+    }
+
+    public static boolean resetDatabase() {
+        //remove all lines in the files activites.txt, reservations.txt and rooms.txt
+        try {
+            PrintWriter out = new PrintWriter("src/db/activities.txt");
+            out.print("");
+            out.close();
+            out = new PrintWriter("src/db/reservations.txt");
+            out.print("");
+            out.close();
+            out = new PrintWriter("src/db/rooms.txt");
+            out.print("");
+            out.close();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean resetRooms() {
+        //remove all lines in the file rooms.txt
+        try {
+            PrintWriter out = new PrintWriter("src/db/rooms.txt");
+            out.print("");
+            out.close();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean resetActivities() {
+        //remove all lines in the file activities.txt
+        try {
+            PrintWriter out = new PrintWriter("src/db/activities.txt");
+            out.print("");
+            out.close();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean resetReservations() {
+        //remove all lines in the file reservations.txt
+        try {
+            PrintWriter out = new PrintWriter("src/db/reservations.txt");
+            out.print("");
+            out.close();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    //method that converts numbers betwen 1 and 7 to days of the week
+    public static String convertDay(int day) {
+        switch (day) {
+            case 1:
+                return "Monday";
+            case 2:
+                return "Tuesday";
+            case 3:
+                return "Wednesday";
+            case 4:
+                return "Thursday";
+            case 5:
+                return "Friday";
+            case 6:
+                return "Saturday";
+            case 7:
+                return "Sunday";
+            default:
+                return "Invalid day";
+        }
+    }
+
+    public static String convertDuration(int hour, int duration) {
+        int endHour = hour + duration;
+        return hour + ":00-" + endHour + ":00";
     }
 }

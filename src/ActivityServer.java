@@ -19,6 +19,9 @@ public class ActivityServer {
             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             // Read the request line
             String requestLine = in.readLine();
+            if(requestLine.contains("favicon.ico")){
+                continue;
+            }
             Map<String, String> parameters = new HashMap<>();
             Map<String, Map<String, String>> requests = new HashMap<>();
             String[] tokens = requestLine.split("\\?");
@@ -26,24 +29,36 @@ public class ActivityServer {
             //tokenize method by ' /' char and set method to last token
             String[] getAndMethodTokenized = getAndMethod.split(" /");
             String method = getAndMethodTokenized[getAndMethodTokenized.length - 1];
-            String get = getAndMethodTokenized[0];
 
             //region Get all requests and store in requests
             // Split the query string into name-value pairs
-            tokens[1] = tokens[1].substring(0, tokens[1].indexOf(" "));
-            //initialize a string array with name pairs with one element with tokens[1]
-            String[] pairs = {tokens[1]};
-            if (tokens[1].contains("&")) {
-                pairs = tokens[1].split("&");
-            }
+            //if there are parameters
+            if (tokens.length > 1) {
+                tokens[1] = tokens[1].substring(0, tokens[1].indexOf(" "));
+                //initialize a string array with name pairs with one element with tokens[1]
+                String[] pairs = {tokens[1]};
+                if (tokens[1].contains("&")) {
+                    pairs = tokens[1].split("&");
+                }
 
-            for (String pair : pairs) {
-                int equalsIndex = pair.indexOf("=");
-                String name = pair.substring(0, equalsIndex);
-                String value = pair.substring(equalsIndex + 1);
-                parameters.put(name, value);
+                for (String pair : pairs) {
+                    int equalsIndex = pair.indexOf("=");
+                    String name = pair.substring(0, equalsIndex);
+                    String value = pair.substring(equalsIndex + 1);
+                    parameters.put(name, value);
+                    requests.put(method, parameters);
+                }
+            }
+            //Get the method if there are no parameters
+            else if (tokens.length == 1){
+                method = method.substring(0, method.indexOf(" "));
                 requests.put(method, parameters);
             }
+            else {
+                break;
+            }
+
+            //endregion
 
             String[] parts = requestLine.split(" ");
             // Check if the request is a GET request
@@ -69,7 +84,7 @@ public class ActivityServer {
                                     //add activity to Activities
                                     addActivity(parametersMap.get("name"));
                                     //send HTTP 200 OK message
-                                    Helper.printHtmlMessage("200", "Activity added successfully", out);
+                                    Helper.printHtmlMessage("200", "Activity " + parametersMap.get("name") + " added successfully", out);
                                 }
                             } else {
                                 //send HTTP 400 Bad Request indicating that input is invalid
@@ -119,6 +134,11 @@ public class ActivityServer {
                             }
                             break;
                         //endregion
+                        //region case:Default
+                        default:
+                            Helper.printHtmlMessage("400", "You entered invalid method name", out);
+                            break;
+                        //endregion
                     }
                 }
                 //endregion
@@ -126,7 +146,7 @@ public class ActivityServer {
             clientSocket.close();
         }
     }
-
+    //Check if activity exists
     public static boolean activityExists(String name) {
         for (String activity : getActivities()) {
             if (activity.equals(name)) {
@@ -135,7 +155,7 @@ public class ActivityServer {
         }
         return false;
     }
-
+    //This method is used in activityExists method to get all activities
     public static ArrayList<String> getActivities() {
         ArrayList<String> activities = new ArrayList<>();
         try {
@@ -152,7 +172,7 @@ public class ActivityServer {
         return activities;
     }
 
-
+    //Remove activity method
     public static void removeActivity(String name) throws IOException {
         //remove activity by name from activities.txt
         File file = new File("src/db/Activities.txt");
@@ -168,7 +188,7 @@ public class ActivityServer {
         //rename temp file to original file
         temp.renameTo(file);
     }
-
+    //Add activity method
     public static void addActivity(String name) {
         //add activity name to src/db/activities.txt
         try {
