@@ -1,3 +1,8 @@
+ABOUT THIS PROGRAM:
+This is a socket programming app developed in java that lets you create rooms, activities then make reservations to these rooms.
+There are 3 main servers and 3 txt files as the database.
+
+HOW TO GET STARTED:
 This program can either be run by running 3 of the servers in the src folder in seperate cmd's with
 the command: java ServerName
 
@@ -7,8 +12,7 @@ java ReservationServer
 
 or by using an IDE.
 
-How to use the program:
-
+HOW TO USE THE FUNCTIONS:
 You can invoke curl commands to the server to make requests. The server will respond with a status message.
 Or you can use a web browser to make requests to the server.
 
@@ -53,4 +57,4 @@ http://localhost:8080/listavailability?room=M2Z08&day=5
 http://localhost:8080/listavailability?room=M2Z08
 http://localhost:8080/display?id=1
 
-Thanks for evaluating this project.
+Thanks for reviewing this project.
